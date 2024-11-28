@@ -53,6 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const saveSettingsBtn = document.getElementById('saveSettings');
     const recentFilesDiv = document.getElementById('recentFiles');
     const exportHistoryBtn = document.getElementById('exportHistory');
+    const clearHistoryBtn = document.getElementById('clearHistory');
 
     // 載入設定
     chrome.storage.local.get(['apiKey', 'recentFiles'], function(result) {
@@ -271,29 +272,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // 將所有事件監聽器初始化函數獨立出來
-    function initializeEventListeners() {
-        const statusDiv = document.getElementById('status');
-        const cameraVideo = document.getElementById('camera');
-        const previewImg = document.getElementById('preview');
-        const startCameraBtn = document.getElementById('startCamera');
-        const capturePhotoBtn = document.getElementById('capturePhoto');
-        const analyzePhotoBtn = document.getElementById('analyzePhoto');
-        const apiKeyInput = document.getElementById('apiKey');
-        const saveSettingsBtn = document.getElementById('saveSettings');
-        const recentFilesDiv = document.getElementById('recentFiles');
-        const exportHistoryBtn = document.getElementById('exportHistory');
-
-        // 重新綁定所有事件
-        if (startCameraBtn) startCameraBtn.addEventListener('click', startCamera);
-        if (capturePhotoBtn) capturePhotoBtn.addEventListener('click', capturePhoto);
-        if (analyzePhotoBtn) analyzePhotoBtn.addEventListener('click', analyzePhoto);
-        if (saveSettingsBtn) saveSettingsBtn.addEventListener('click', saveSettings);
-        if (exportHistoryBtn) exportHistoryBtn.addEventListener('click', exportHistory);
-    }
-
-    // 在文件載入時初始化事件監聽器
-    document.addEventListener('DOMContentLoaded', initializeEventListeners);
+    // 清除歷史紀錄
+    clearHistoryBtn.addEventListener('click', function() {
+        if (confirm('確定要清除所有歷史紀錄嗎？此操作無法復原。')) {
+            chrome.storage.local.remove('recentFiles', function() {
+                updateRecentFiles([]);
+                updateStatus('歷史紀錄已清除', 'active');
+                document.getElementById('analysisResult').style.display = 'none';
+            });
+        }
+    });
 });
 
 // 使用 OpenAI API 分析照片
