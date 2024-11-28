@@ -142,6 +142,23 @@
     .file-item .analysis li {
       margin: 0.3em 0;
     }
+    .history-controls {
+      margin: 10px 0;
+      display: flex;
+      gap: 10px;
+    }
+    .history-controls button {
+      flex: 1;
+      padding: 8px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .history-controls button:hover {
+      background-color: #45a049;
+    }
   </style>
 </head>
 <body>
@@ -168,6 +185,9 @@
 
     <div id="fileList">
       <h3>最近分析的照片</h3>
+      <div class="history-controls">
+        <button id="exportHistory">匯出歷史紀錄</button>
+      </div>
       <div id="recentFiles"></div>
     </div>
   </div>

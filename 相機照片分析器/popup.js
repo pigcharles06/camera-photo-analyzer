@@ -31,7 +31,7 @@ const systemPrompt = `你是一個專業的物品狀態分析專家。
 ${recyclableCategories.join('、')}
 
 重要提醒：
-- 請忽略物品上的商標，只要物品本身符合回收要求，即可回收
+- 請忽略物上的商標，只要物品本身符合回收要求，即可回收
 - 商標如果是高價精品類別，才標記為精品
 - 如果物品沒有在可接受的物品類別列表中請拒絕回收
 - 若物品狀況良好，優先考慮二手轉售價值
@@ -52,6 +52,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const apiKeyInput = document.getElementById('apiKey');
     const saveSettingsBtn = document.getElementById('saveSettings');
     const recentFilesDiv = document.getElementById('recentFiles');
+    const exportHistoryBtn = document.getElementById('exportHistory');
 
     // 載入設定
     chrome.storage.local.get(['apiKey', 'recentFiles'], function(result) {
@@ -215,7 +216,7 @@ document.addEventListener('DOMContentLoaded', function() {
             div.appendChild(img);
             div.appendChild(info);
             
-            // 點擊顯示分���結果
+            // 點擊顯示分結果
             div.addEventListener('click', function() {
                 const analysisResult = document.getElementById('analysisResult');
                 analysisResult.innerHTML = formatText(file.analysis);
@@ -239,6 +240,60 @@ document.addEventListener('DOMContentLoaded', function() {
             updateStatus('相機已關閉', 'inactive');
         }
     }
+
+    // 匯出歷史紀錄
+    exportHistoryBtn.addEventListener('click', function() {
+        chrome.storage.local.get('recentFiles', function(result) {
+            const recentFiles = result.recentFiles || [];
+            
+            // 準備文字內容
+            const textContent = 
+                '=== 相機照片分析器歷史紀錄 ===\n' +
+                `匯出時間：${new Date().toLocaleString()}\n` +
+                '===============================\n\n' +
+                recentFiles.map(file => {
+                    return `【時間】${new Date(file.timestamp).toLocaleString()}\n` +
+                           `【分析結果】\n` +
+                           `${file.analysis}\n` +
+                           `\n${'='.repeat(50)}\n\n`;
+                }).join('');
+
+            // 建立下載連結
+            const blob = new Blob(['\uFEFF' + textContent], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', `相機照片分析器_歷史紀錄_${new Date().toLocaleDateString()}.txt`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        });
+    });
+
+    // 將所有事件監聽器初始化函數獨立出來
+    function initializeEventListeners() {
+        const statusDiv = document.getElementById('status');
+        const cameraVideo = document.getElementById('camera');
+        const previewImg = document.getElementById('preview');
+        const startCameraBtn = document.getElementById('startCamera');
+        const capturePhotoBtn = document.getElementById('capturePhoto');
+        const analyzePhotoBtn = document.getElementById('analyzePhoto');
+        const apiKeyInput = document.getElementById('apiKey');
+        const saveSettingsBtn = document.getElementById('saveSettings');
+        const recentFilesDiv = document.getElementById('recentFiles');
+        const exportHistoryBtn = document.getElementById('exportHistory');
+
+        // 重新綁定所有事件
+        if (startCameraBtn) startCameraBtn.addEventListener('click', startCamera);
+        if (capturePhotoBtn) capturePhotoBtn.addEventListener('click', capturePhoto);
+        if (analyzePhotoBtn) analyzePhotoBtn.addEventListener('click', analyzePhoto);
+        if (saveSettingsBtn) saveSettingsBtn.addEventListener('click', saveSettings);
+        if (exportHistoryBtn) exportHistoryBtn.addEventListener('click', exportHistory);
+    }
+
+    // 在文件載入時初始化事件監聽器
+    document.addEventListener('DOMContentLoaded', initializeEventListeners);
 });
 
 // 使用 OpenAI API 分析照片
