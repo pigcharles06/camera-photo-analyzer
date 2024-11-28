@@ -8,7 +8,10 @@
     "notifications",
     "tabs",
     "activeTab",
-    "background"
+    "background",
+    "downloads",
+    "fileSystem",
+    "fileSystemProvider"
   ],
   "host_permissions": [
     "https://api.openai.com/*"
@@ -16,5 +19,9 @@
   "action": {
     "default_popup": "popup.html",
     "default_icon": "icon.png"
-  }
+  },
+  "web_accessible_resources": [{
+    "resources": ["*"],
+    "matches": ["<all_urls>"]
+  }]
 } 

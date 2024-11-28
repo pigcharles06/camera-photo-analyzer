@@ -31,7 +31,7 @@ const systemPrompt = `你是一個專業的物品狀態分析專家。
 ${recyclableCategories.join('、')}
 
 重要提醒：
-- 請忽略物上的商標，只要物品本身符合回收要求，即可回收
+- 請忽略物���的商標，只要物品本身符合回收要求，即可回收
 - 商標如果是高價精品類別，才標記為精品
 - 如果物品沒有在可接受的物品類別列表中請拒絕回收
 - 若物品狀況良好，優先考慮二手轉售價值
@@ -54,28 +54,155 @@ document.addEventListener('DOMContentLoaded', function() {
     const recentFilesDiv = document.getElementById('recentFiles');
     const exportHistoryBtn = document.getElementById('exportHistory');
     const clearHistoryBtn = document.getElementById('clearHistory');
+    const autoSavePathInput = document.getElementById('autoSavePath');
+    const autoSaveToggleBtn = document.getElementById('autoSaveToggle');
+    const autoSaveStatus = document.getElementById('autoSaveStatus');
 
     // 載入設定
-    chrome.storage.local.get(['apiKey', 'recentFiles'], function(result) {
+    chrome.storage.local.get(['apiKey', 'recentFiles', 'autoSavePath', 'autoSaveEnabled'], function(result) {
         if (result.apiKey) {
             apiKeyInput.value = result.apiKey;
+        }
+        if (result.autoSavePath) {
+            autoSavePathInput.value = result.autoSavePath;
+        }
+        if (result.autoSaveEnabled) {
+            enableAutoSave(true);
         }
         if (result.recentFiles) {
             updateRecentFiles(result.recentFiles);
         }
     });
 
+    // 自動儲存功能開關
+    autoSaveToggleBtn.addEventListener('click', function() {
+        chrome.storage.local.get('autoSaveEnabled', function(result) {
+            const newState = !result.autoSaveEnabled;
+            enableAutoSave(newState);
+            chrome.storage.local.set({ autoSaveEnabled: newState });
+        });
+    });
+
     // 儲存設定
     saveSettingsBtn.addEventListener('click', function() {
         const apiKey = apiKeyInput.value.trim();
-        if (apiKey) {
-            chrome.storage.local.set({ apiKey: apiKey }, function() {
+        const autoSavePath = autoSavePathInput.value.trim();
+        
+        if (apiKey && autoSavePath) {
+            chrome.storage.local.set({ 
+                apiKey: apiKey,
+                autoSavePath: autoSavePath 
+            }, function() {
                 updateStatus('設定已儲存', 'active');
             });
         } else {
-            updateStatus('請輸入有效的 API Key', 'inactive');
+            updateStatus('請輸入有效的 API Key 和儲存路徑', 'inactive');
         }
     });
+
+    // 自動儲存功能
+    function enableAutoSave(enabled) {
+        if (enabled) {
+            autoSaveStatus.textContent = '已啟用';
+            autoSaveStatus.className = 'status-indicator active';
+            exportHistoryBtn.disabled = true;
+            clearHistoryBtn.disabled = true;
+            autoSaveToggleBtn.textContent = '關閉自動記錄';
+        } else {
+            autoSaveStatus.textContent = '未啟用';
+            autoSaveStatus.className = 'status-indicator inactive';
+            exportHistoryBtn.disabled = false;
+            clearHistoryBtn.disabled = false;
+            autoSaveToggleBtn.textContent = '開啟自動記錄';
+        }
+    }
+
+    // 修改分析完成後的處理
+    async function handleAnalysisComplete(analysis, photoData) {
+        // 更新介面
+        const analysisResult = document.getElementById('analysisResult');
+        analysisResult.innerHTML = formatText(analysis);
+        analysisResult.style.display = 'block';
+        
+        // 建立新記錄
+        const newRecord = {
+            image: photoData,
+            analysis: analysis,
+            timestamp: new Date().toISOString()
+        };
+
+        // 儲存到歷史記錄
+        chrome.storage.local.get(['recentFiles', 'autoSaveEnabled', 'autoSavePath'], async function(result) {
+            const recentFiles = result.recentFiles || [];
+            const updatedFiles = [newRecord, ...recentFiles].slice(0, 10);
+            
+            // 更新儲存
+            await chrome.storage.local.set({ recentFiles: updatedFiles });
+            updateRecentFiles(updatedFiles);
+
+            // 如果啟用自動儲存，則自動匯出
+            if (result.autoSaveEnabled) {
+                const textContent = formatExportContent([newRecord]);
+                await saveToFile(textContent);
+            }
+        });
+    }
+
+    // 格式化匯出內容
+    function formatExportContent(records) {
+        return '=== 相機照片分析器記錄 ===\n' +
+               `記錄時間：${new Date().toLocaleString()}\n` +
+               '===============================\n\n' +
+               records.map(record => {
+                   return `【時間】${new Date(record.timestamp).toLocaleString()}\n` +
+                          `【分析結果】\n` +
+                          `${record.analysis}\n` +
+                          `\n${'='.repeat(50)}\n\n`;
+               }).join('');
+    }
+
+    // 修改儲存檔案的函數
+    async function saveToFile(content) {
+        try {
+            const result = await chrome.storage.local.get('autoSavePath');
+            const savePath = result.autoSavePath;
+            
+            if (!savePath) {
+                throw new Error('請先設定儲存路徑');
+            }
+
+            const today = new Date().toISOString().split('T')[0];
+            const time = new Date().toTimeString().split(':').join('-').split(' ')[0];
+            const filename = `相機照片分析器_自動記錄_${today}_${time}.txt`;
+
+            // 清理路徑名稱，只保留合法字符
+            const cleanPath = savePath.trim()
+                .replace(/[\\/:*?"<>|]/g, '')  // 移除非法字符
+                .replace(/^\/+|\/+$/g, '');    // 移除開頭和結尾的斜線
+
+            // 組合最終路徑
+            const fullPath = cleanPath ? `${cleanPath}/${filename}` : filename;
+
+            const blob = new Blob(['\uFEFF' + content], { type: 'text/plain;charset=utf-8' });
+            chrome.downloads.download({
+                url: URL.createObjectURL(blob),
+                filename: fullPath,
+                saveAs: false,
+                conflictAction: 'uniquify'
+            }, function(downloadId) {
+                if (chrome.runtime.lastError) {
+                    console.error('下載錯誤：', chrome.runtime.lastError);
+                    updateStatus('自動儲存失敗：' + chrome.runtime.lastError.message, 'inactive');
+                } else {
+                    updateStatus('已自動儲存分析結果', 'active');
+                }
+                URL.revokeObjectURL(blob);
+            });
+        } catch (error) {
+            console.error('儲存檔案錯誤：', error);
+            updateStatus('儲存失敗：' + error.message, 'inactive');
+        }
+    }
 
     // 開啟相機
     startCameraBtn.addEventListener('click', async function() {
@@ -156,25 +283,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         try {
             const response = await analyzePhotoWithAPI(photoData, apiKey.apiKey);
-            
-            // 顯示分析結果
-            const analysisResult = document.getElementById('analysisResult');
-            analysisResult.innerHTML = formatText(response);
-            analysisResult.style.display = 'block';
-            
-            // 更新最近的照片列表
-            chrome.storage.local.get('recentFiles', function(result) {
-                const recentFiles = result.recentFiles || [];
-                const newFile = {
-                    image: photoData,
-                    analysis: response,
-                    timestamp: new Date().toISOString()
-                };
-                const updatedFiles = [newFile, ...recentFiles].slice(0, 10);
-                chrome.storage.local.set({ recentFiles: updatedFiles });
-                updateRecentFiles(updatedFiles);
-            });
-
+            await handleAnalysisComplete(response, photoData);
             updateStatus('分析完成', 'active');
         } catch (error) {
             console.error('分析錯誤：', error);

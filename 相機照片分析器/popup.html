@@ -159,6 +159,36 @@
     .history-controls button:hover {
       background-color: #45a049;
     }
+    .path-selector {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin: 10px 0;
+    }
+    .path-display {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 5px;
+    }
+    .path-button {
+      width: 100%;
+      padding: 8px;
+      background-color: #1976d2;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .path-button:hover {
+      background-color: #1565c0;
+    }
+    .path-hint {
+      display: block;
+      color: #666;
+      font-size: 12px;
+      margin-top: 4px;
+      margin-bottom: 8px;
+    }
   </style>
 </head>
 <body>
@@ -180,6 +210,13 @@
     <div class="settings">
       <label for="apiKey">OpenAI API Key:</label>
       <input type="password" id="apiKey" placeholder="輸入您的 OpenAI API Key">
+      <label for="autoSavePath">自動儲存路徑:</label>
+      <input type="text" id="autoSavePath" placeholder="會儲存在下載資料夾底下，請設定資料夾名稱">
+      <small class="path-hint">※ 路徑會自動建立在「下載」資料夾底下</small>
+      <div class="auto-save-controls">
+        <button id="autoSaveToggle">開啟自動記錄</button>
+        <span id="autoSaveStatus" class="status-indicator">未啟用</span>
+      </div>
       <button id="saveSettings">儲存設定</button>
     </div>
 
