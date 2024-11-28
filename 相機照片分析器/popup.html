@@ -10,24 +10,29 @@
       padding: 15px;
       font-family: "Microsoft JhengHei", sans-serif;
     }
+    
     .container {
       display: flex;
       flex-direction: column;
       gap: 15px;
     }
+
     .status {
       margin: 10px 0;
       padding: 10px;
       border-radius: 4px;
     }
+
     .active {
       background-color: #e8f5e9;
       color: #2e7d32;
     }
+
     .inactive {
       background-color: #ffebee;
       color: #c62828;
     }
+
     button {
       width: 100%;
       padding: 10px;
@@ -39,13 +44,16 @@
       cursor: pointer;
       font-size: 14px;
     }
+
     button:disabled {
       background-color: #ccc;
       cursor: not-allowed;
     }
+
     button:hover:not(:disabled) {
       background-color: #1565c0;
     }
+
     #preview, #camera {
       width: 100%;
       height: 300px;
@@ -54,10 +62,13 @@
       display: none;
       object-fit: contain;
     }
+
     .controls {
       display: flex;
+      flex-direction: column;
       gap: 10px;
     }
+
     #analysisResult {
       margin-top: 15px;
       padding: 15px;
@@ -67,19 +78,23 @@
       font-size: 14px;
       display: none;
     }
+
     #analysisResult ul {
       list-style-type: disc;
       padding-left: 20px;
       margin: 8px 0;
     }
+
     #analysisResult li {
       margin: 4px 0;
     }
+
     #fileList {
       margin-top: 10px;
       max-height: 200px;
       overflow-y: auto;
     }
+
     .file-item {
       padding: 8px;
       border-bottom: 1px solid #eee;
@@ -88,106 +103,101 @@
       align-items: flex-start;
       cursor: pointer;
     }
+
     .file-item:hover {
       background-color: #f5f5f5;
     }
+
     .file-item img {
       width: 50px;
       height: 50px;
       object-fit: cover;
       border-radius: 4px;
     }
+
     .file-item .info {
       flex: 1;
     }
+
     .file-item .timestamp {
       font-size: 12px;
       color: #666;
     }
+
     .file-item .analysis {
       margin-top: 5px;
       font-size: 14px;
       white-space: pre-wrap;
     }
+
     .settings {
       margin-top: 15px;
-      padding: 10px;
+      padding: 15px 20px;
       background-color: #f5f5f5;
       border-radius: 4px;
+      margin-bottom: 15px;
     }
+
     .settings label {
       display: block;
-      margin-bottom: 5px;
+      margin-bottom: 8px;
     }
+
     .settings input {
       width: 100%;
-      padding: 8px;
-      margin-bottom: 10px;
+      padding: 10px;
+      margin-bottom: 15px;
       border: 1px solid #ddd;
       border-radius: 4px;
+      box-sizing: border-box;
     }
-    #analysisResult, .file-item .analysis {
-      white-space: pre-wrap;
-      line-height: 1.5;
+
+    .path-hint {
+      display: block;
+      color: #666;
+      font-size: 12px;
+      margin-top: 6px;
+      margin-bottom: 12px;
     }
-    #analysisResult, .file-item .analysis {
-      line-height: 1.6;
-    }
-    #analysisResult ul, #analysisResult ol,
-    .file-item .analysis ul, .file-item .analysis ol {
-      padding-left: 2em;
-      margin: 0.5em 0;
-    }
-    #analysisResult li,
-    .file-item .analysis li {
-      margin: 0.3em 0;
-    }
+
     .history-controls {
       margin: 10px 0;
       display: flex;
       gap: 10px;
     }
+
     .history-controls button {
       flex: 1;
       padding: 8px;
       background-color: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
     }
+
     .history-controls button:hover {
       background-color: #45a049;
     }
-    .path-selector {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      margin: 10px 0;
+
+    .auto-save-controls {
+      margin: 15px 0;
     }
-    .path-display {
-      font-size: 12px;
-      color: #666;
-      margin-bottom: 5px;
+
+    * {
+      box-sizing: border-box;
     }
-    .path-button {
+
+    .camera-select {
       width: 100%;
       padding: 8px;
-      background-color: #1976d2;
-      color: white;
-      border: none;
+      margin-bottom: 10px;
+      border: 1px solid #ddd;
       border-radius: 4px;
-      cursor: pointer;
+      background-color: white;
+      font-size: 14px;
+      box-sizing: border-box;
     }
-    .path-button:hover {
-      background-color: #1565c0;
-    }
-    .path-hint {
-      display: block;
-      color: #666;
-      font-size: 12px;
-      margin-top: 4px;
-      margin-bottom: 8px;
+
+    .camera-select:focus {
+      border-color: #1976d2;
+      outline: none;
     }
   </style>
 </head>

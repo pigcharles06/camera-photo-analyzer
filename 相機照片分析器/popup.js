@@ -31,7 +31,7 @@ const systemPrompt = `你是一個專業的物品狀態分析專家。
 ${recyclableCategories.join('、')}
 
 重要提醒：
-- 請忽略物���的商標，只要物品本身符合回收要求，即可回收
+- 請忽略物的商標，只要物品本身符合回收要求，即可回收
 - 商標如果是高價精品類別，才標記為精品
 - 如果物品沒有在可接受的物品類別列表中請拒絕回收
 - 若物品狀況良好，優先考慮二手轉售價值
@@ -105,14 +105,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (enabled) {
             autoSaveStatus.textContent = '已啟用';
             autoSaveStatus.className = 'status-indicator active';
-            exportHistoryBtn.disabled = true;
-            clearHistoryBtn.disabled = true;
             autoSaveToggleBtn.textContent = '關閉自動記錄';
         } else {
             autoSaveStatus.textContent = '未啟用';
             autoSaveStatus.className = 'status-indicator inactive';
-            exportHistoryBtn.disabled = false;
-            clearHistoryBtn.disabled = false;
             autoSaveToggleBtn.textContent = '開啟自動記錄';
         }
     }
@@ -142,27 +138,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // 如果啟用自動儲存，則自動匯出
             if (result.autoSaveEnabled) {
-                const textContent = formatExportContent([newRecord]);
-                await saveToFile(textContent);
+                await saveToFile(analysis, photoData);
             }
         });
     }
 
-    // 格式化匯出內容
-    function formatExportContent(records) {
-        return '=== 相機照片分析器記錄 ===\n' +
-               `記錄時間：${new Date().toLocaleString()}\n` +
-               '===============================\n\n' +
-               records.map(record => {
-                   return `【時間】${new Date(record.timestamp).toLocaleString()}\n` +
-                          `【分析結果】\n` +
-                          `${record.analysis}\n` +
-                          `\n${'='.repeat(50)}\n\n`;
-               }).join('');
-    }
-
     // 修改儲存檔案的函數
-    async function saveToFile(content) {
+    async function saveToFile(content, photoData) {
         try {
             const result = await chrome.storage.local.get('autoSavePath');
             const savePath = result.autoSavePath;
@@ -171,40 +153,123 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error('請先設定儲存路徑');
             }
 
-            const today = new Date().toISOString().split('T')[0];
-            const time = new Date().toTimeString().split(':').join('-').split(' ')[0];
-            const filename = `相機照片分析器_自動記錄_${today}_${time}.txt`;
+            // 使用時間戳記建立檔案名稱
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const filename = `相機照片分析器_自動記錄_${timestamp}.html`;
 
-            // 清理路徑名稱，只保留合法字符
+            // 清理路徑名稱
             const cleanPath = savePath.trim()
-                .replace(/[\\/:*?"<>|]/g, '')  // 移除非法字符
-                .replace(/^\/+|\/+$/g, '');    // 移除開頭和結尾的斜線
+                .replace(/[\\/:*?"<>|]/g, '')
+                .replace(/^\/+|\/+$/g, '');
 
             // 組合最終路徑
             const fullPath = cleanPath ? `${cleanPath}/${filename}` : filename;
 
-            const blob = new Blob(['\uFEFF' + content], { type: 'text/plain;charset=utf-8' });
-            chrome.downloads.download({
+            // 建立 HTML 內容
+            const htmlContent = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <style>
+                        body { font-family: "Microsoft JhengHei", sans-serif; padding: 20px; }
+                        .photo { max-width: 800px; margin: 20px 0; }
+                        .timestamp { color: #666; }
+                        .analysis { white-space: pre-wrap; }
+                        hr { border: 1px solid #eee; margin: 30px 0; }
+                    </style>
+                </head>
+                <body>
+                    <div class="timestamp">【時間】${new Date().toLocaleString()}</div>
+                    <div class="analysis">【分析結果】\n${content}</div>
+                    <img class="photo" src="${photoData}" alt="分析照片">
+                    <hr>
+                </body>
+                </html>
+            `;
+
+            // 建立新的 Blob 並下載
+            const blob = new Blob([htmlContent], { 
+                type: 'text/html;charset=utf-8' 
+            });
+
+            // 下載檔案
+            await chrome.downloads.download({
                 url: URL.createObjectURL(blob),
                 filename: fullPath,
-                saveAs: false,
-                conflictAction: 'uniquify'
-            }, function(downloadId) {
-                if (chrome.runtime.lastError) {
-                    console.error('下載錯誤：', chrome.runtime.lastError);
-                    updateStatus('自動儲存失敗：' + chrome.runtime.lastError.message, 'inactive');
-                } else {
-                    updateStatus('已自動儲存分析結果', 'active');
-                }
-                URL.revokeObjectURL(blob);
+                saveAs: false
             });
+
+            URL.revokeObjectURL(blob);
+            updateStatus('已儲存分析記錄', 'active');
+
         } catch (error) {
             console.error('儲存檔案錯誤：', error);
             updateStatus('儲存失敗：' + error.message, 'inactive');
         }
     }
 
-    // 開啟相機
+    // 在 background.js 中添加以下程式碼來處理檔案寫入
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        if (request.type === 'writeFile') {
+            const blob = new Blob(['\uFEFF' + request.content], { 
+                type: 'text/plain;charset=utf-8' 
+            });
+            
+            chrome.downloads.download({
+                url: URL.createObjectURL(blob),
+                filename: request.path,
+                conflictAction: 'overwrite',
+                saveAs: false
+            }, downloadId => {
+                if (chrome.runtime.lastError) {
+                    sendResponse({ success: false, error: chrome.runtime.lastError });
+                } else {
+                    sendResponse({ success: true, downloadId });
+                }
+                URL.revokeObjectURL(blob);
+            });
+            
+            return true; // 保持消息通道開啟
+        }
+    });
+
+    // 新增攝影機選擇下拉選單
+    const cameraSelect = document.createElement('select');
+    cameraSelect.id = 'cameraSelect';
+    cameraSelect.className = 'camera-select';
+    // 將選單插入到相機按鈕前面
+    startCameraBtn.parentNode.insertBefore(cameraSelect, startCameraBtn);
+    
+    // 取得可用的攝影機列表
+    async function getCameraDevices() {
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(device => device.kind === 'videoinput');
+            
+            // 清空現有選項
+            cameraSelect.innerHTML = '';
+            
+            // 新增攝影機選項
+            videoDevices.forEach(device => {
+                const option = document.createElement('option');
+                option.value = device.deviceId;
+                option.text = device.label || `攝影機 ${cameraSelect.length + 1}`;
+                cameraSelect.appendChild(option);
+            });
+            
+            // 如果沒有找到攝影機
+            if (videoDevices.length === 0) {
+                updateStatus('未找到可用的攝影機', 'inactive');
+                startCameraBtn.disabled = true;
+            }
+        } catch (error) {
+            console.error('無法取得攝影機列表：', error);
+            updateStatus('無法取得攝影機列表', 'inactive');
+        }
+    }
+
+    // 修改開啟相機的函數
     startCameraBtn.addEventListener('click', async function() {
         try {
             if (stream) {
@@ -215,8 +280,12 @@ document.addEventListener('DOMContentLoaded', function() {
             // 使用 activeTab 權限請求相機
             await chrome.tabs.query({active: true, currentWindow: true});
             
+            // 取得選擇的攝影機 ID
+            const selectedDeviceId = cameraSelect.value;
+            
             const constraints = {
                 video: {
+                    deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
                     width: { ideal: 1280 },
                     height: { ideal: 720 }
                 },
@@ -224,6 +293,9 @@ document.addEventListener('DOMContentLoaded', function() {
             };
 
             stream = await navigator.mediaDevices.getUserMedia(constraints);
+            
+            // 更新攝影機列表（因為第一次可能沒有標籤名稱）
+            await getCameraDevices();
             
             cameraVideo.srcObject = stream;
             await cameraVideo.play();
@@ -351,33 +423,49 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // 匯出歷史紀錄
+    // 修改匯出歷史紀錄功能
     exportHistoryBtn.addEventListener('click', function() {
         chrome.storage.local.get('recentFiles', function(result) {
             const recentFiles = result.recentFiles || [];
             
-            // 準備文字內容
-            const textContent = 
-                '=== 相機照片分析器歷史紀錄 ===\n' +
-                `匯出時間：${new Date().toLocaleString()}\n` +
-                '===============================\n\n' +
-                recentFiles.map(file => {
-                    return `【時間】${new Date(file.timestamp).toLocaleString()}\n` +
-                           `【分析結果】\n` +
-                           `${file.analysis}\n` +
-                           `\n${'='.repeat(50)}\n\n`;
-                }).join('');
+            // 建立 HTML 內容
+            const htmlContent = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <style>
+                        body { font-family: "Microsoft JhengHei", sans-serif; padding: 20px; }
+                        .photo { max-width: 800px; margin: 20px 0; }
+                        .timestamp { color: #666; }
+                        .analysis { white-space: pre-wrap; }
+                        hr { border: 1px solid #eee; margin: 30px 0; }
+                    </style>
+                </head>
+                <body>
+                    ${recentFiles.map(record => `
+                        <div class="timestamp">【時間】${new Date(record.timestamp).toLocaleString()}</div>
+                        <div class="analysis">【分析結果】\n${record.analysis}</div>
+                        <img class="photo" src="${record.image}" alt="分析照片">
+                        <hr>
+                    `).join('')}
+                </body>
+                </html>
+            `;
 
-            // 建立下載連結
-            const blob = new Blob(['\uFEFF' + textContent], { type: 'text/plain;charset=utf-8' });
+            // 建立下載
+            const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
             const url = URL.createObjectURL(blob);
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
             const link = document.createElement('a');
-            link.setAttribute('href', url);
-            link.setAttribute('download', `相機照片分析器_歷史紀錄_${new Date().toLocaleDateString()}.txt`);
+            link.href = url;
+            link.download = `相機照片分析器_匯出記錄_${timestamp}.html`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
+            
+            updateStatus('已匯出所有記錄', 'active');
         });
     });
 
