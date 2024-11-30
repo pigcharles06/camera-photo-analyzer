@@ -42,7 +42,7 @@ ${recyclableCategories.join('、')}
 請用繁體中文回答，並盡可能詳細描述所見到的特徵。
 如果圖片不夠清晰，請說明可以觀察到的部分，並標註無法確定的資訊`
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     const statusDiv = document.getElementById('status');
     const cameraVideo = document.getElementById('camera');
     const previewImg = document.getElementById('preview');
@@ -57,6 +57,90 @@ document.addEventListener('DOMContentLoaded', function() {
     const autoSavePathInput = document.getElementById('autoSavePath');
     const autoSaveToggleBtn = document.getElementById('autoSaveToggle');
     const autoSaveStatus = document.getElementById('autoSaveStatus');
+
+    // 新增攝影機選擇下拉選單
+    const cameraSelect = document.createElement('select');
+    cameraSelect.id = 'cameraSelect';
+    cameraSelect.className = 'camera-select';
+    // 將選單插入到相機按鈕前面
+    startCameraBtn.parentNode.insertBefore(cameraSelect, startCameraBtn);
+
+    // 取得可用的攝影機列表
+    async function getCameraDevices() {
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(device => device.kind === 'videoinput');
+            
+            // 清空現有選項
+            cameraSelect.innerHTML = '';
+            
+            // 新增攝影機選項
+            videoDevices.forEach(device => {
+                const option = document.createElement('option');
+                option.value = device.deviceId;
+                option.text = device.label || `攝影機 ${cameraSelect.length + 1}`;
+                cameraSelect.appendChild(option);
+            });
+            
+            // 如果沒有找到攝影機
+            if (videoDevices.length === 0) {
+                updateStatus('未找到可用的攝影機', 'inactive');
+                startCameraBtn.disabled = true;
+                return false;
+            }
+            return true;
+        } catch (error) {
+            console.error('無法取得攝影機列表：', error);
+            updateStatus('無法取得攝影機列表', 'inactive');
+            return false;
+        }
+    }
+
+    // 自動掃描和開啟相機
+    async function initializeCamera() {
+        try {
+            // 先取得權限
+            await navigator.mediaDevices.getUserMedia({ video: true });
+            
+            // 更新攝影機列表
+            const hasDevices = await getCameraDevices();
+            if (!hasDevices) return;
+
+            // 使用選擇的攝影機
+            const selectedDeviceId = cameraSelect.value;
+            const constraints = {
+                video: {
+                    deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined
+                }
+            };
+
+            // 停止現有的串流（如果有的話）
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+
+            // 開啟相機串流
+            stream = await navigator.mediaDevices.getUserMedia(constraints);
+            cameraVideo.srcObject = stream;
+            cameraVideo.style.display = 'block';
+            previewImg.style.display = 'none';
+            
+            // 更新按鈕狀態
+            startCameraBtn.textContent = '關閉相機';
+            capturePhotoBtn.disabled = false;
+            
+            updateStatus('相機已開啟', 'active');
+        } catch (error) {
+            console.error('相機初始化失敗:', error);
+            updateStatus('相機初始化失敗: ' + error.message, 'inactive');
+        }
+    }
+
+    // 在插件開啟時自動初始化相機
+    initializeCamera();
+
+    // 當選擇不同的相機時重新初始化
+    cameraSelect.addEventListener('change', initializeCamera);
 
     // 載入設定
     chrome.storage.local.get(['apiKey', 'recentFiles', 'autoSavePath', 'autoSaveEnabled'], function(result) {
@@ -234,84 +318,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // 新增攝影機選擇下拉選單
-    const cameraSelect = document.createElement('select');
-    cameraSelect.id = 'cameraSelect';
-    cameraSelect.className = 'camera-select';
-    // 將選單插入到相機按鈕前面
-    startCameraBtn.parentNode.insertBefore(cameraSelect, startCameraBtn);
-    
-    // 取得可用的攝影機列表
-    async function getCameraDevices() {
-        try {
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            const videoDevices = devices.filter(device => device.kind === 'videoinput');
-            
-            // 清空現有選項
-            cameraSelect.innerHTML = '';
-            
-            // 新增攝影機選項
-            videoDevices.forEach(device => {
-                const option = document.createElement('option');
-                option.value = device.deviceId;
-                option.text = device.label || `攝影機 ${cameraSelect.length + 1}`;
-                cameraSelect.appendChild(option);
-            });
-            
-            // 如果沒有找到攝影機
-            if (videoDevices.length === 0) {
-                updateStatus('未找到可用的攝影機', 'inactive');
-                startCameraBtn.disabled = true;
-            }
-        } catch (error) {
-            console.error('無法取得攝影機列表：', error);
-            updateStatus('無法取得攝影機列表', 'inactive');
-        }
-    }
-
-    // 修改開啟相機的函數
-    startCameraBtn.addEventListener('click', async function() {
-        try {
-            if (stream) {
-                stopCamera();
-                return;
-            }
-
-            // 使用 activeTab 權限請求相機
-            await chrome.tabs.query({active: true, currentWindow: true});
-            
-            // 取得選擇的攝影機 ID
-            const selectedDeviceId = cameraSelect.value;
-            
-            const constraints = {
-                video: {
-                    deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                },
-                audio: false
-            };
-
-            stream = await navigator.mediaDevices.getUserMedia(constraints);
-            
-            // 更新攝影機列表（因為第一次可能沒有標籤名稱）
-            await getCameraDevices();
-            
-            cameraVideo.srcObject = stream;
-            await cameraVideo.play();
-            
-            cameraVideo.style.display = 'block';
-            previewImg.style.display = 'none';
-            capturePhotoBtn.disabled = false;
-            startCameraBtn.textContent = '關閉相機';
-            updateStatus('相機已開啟', 'active');
-        } catch (error) {
-            console.error('無法存取相機：', error);
-            updateStatus('無法存取相機：' + error.message, 'inactive');
-        }
-    });
-
-    // 拍攝照片
+    // 拍照按鈕事件
     capturePhotoBtn.addEventListener('click', function() {
         if (!stream) {
             updateStatus('請先開啟相機', 'inactive');

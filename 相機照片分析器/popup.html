@@ -6,8 +6,8 @@
   <script src="lib/markdown-it.min.js"></script>
   <style>
     body {
-      width: 400px;
-      padding: 15px;
+      width: 800px;
+      padding: 20px;
       font-family: "Microsoft JhengHei", sans-serif;
     }
     
@@ -56,7 +56,7 @@
 
     #preview, #camera {
       width: 100%;
-      height: 300px;
+      height: 500px;
       border: 1px solid #ccc;
       border-radius: 4px;
       display: none;
@@ -65,8 +65,20 @@
 
     .controls {
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       gap: 10px;
+      width: 100%;
+      margin: 15px 0;
+      align-items: center;
+    }
+
+    .controls button {
+      flex: 1;
+      margin: 0;
+      font-size: 16px;
+      padding: 12px 20px;
+      height: 44px;
+      white-space: nowrap;
     }
 
     #analysisResult {
@@ -185,19 +197,27 @@
     }
 
     .camera-select {
-      width: 100%;
       padding: 8px;
-      margin-bottom: 10px;
       border: 1px solid #ddd;
       border-radius: 4px;
       background-color: white;
       font-size: 14px;
       box-sizing: border-box;
+      min-width: 200px;
+      height: 44px;
     }
 
     .camera-select:focus {
       border-color: #1976d2;
       outline: none;
+    }
+
+    .camera-container {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      width: 100%;
+      margin-bottom: 15px;
     }
   </style>
 </head>
@@ -210,6 +230,7 @@
     <img id="preview" alt="預覽">
     
     <div class="controls">
+      
       <button id="startCamera">開啟相機</button>
       <button id="capturePhoto" disabled>拍攝照片</button>
       <button id="analyzePhoto" disabled>分析照片</button>
