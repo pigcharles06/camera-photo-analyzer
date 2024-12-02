@@ -1,5 +1,6 @@
 import { recyclableCategories } from './lib/recycling-data.js';
 
+let updtaecameralist = null;
 let stream = null;
 let photoData = null;
 let disablecapture = null;
@@ -18,9 +19,9 @@ const systemPrompt = `你是一個專業的物品狀態分析專家。
    - 提供安全警告訊息
    
 3. 物品基本資訊：
-   - 物品類型（例如：衣服、電子產品等）
+   - 物品類型（例如：玩偶、衣服、鞋子、電子產品、文具、杯子、手提包、書本等）
    - 物品顏色
-   - 物品特徵（包括品牌標誌、圖案等）
+   - 物品特徵（包括物品外表上的品牌標誌、圖案、文字描述等）
 
 4. 物品狀態評估：
    - 外觀狀況（新舊程度）
@@ -30,12 +31,15 @@ const systemPrompt = `你是一個專業的物品狀態分析專家。
 5. 回收評估：
 我們目前只接受以下類別的物品列表：
 ${recyclableCategories.join('、')}
+請確實比對物品的類比是否和清單的物品列表一致
+
 
 重要提醒：
-- 請忽略物的商標，只要物品本身符合回收要求，即可回收
+- 請忽略物品的商標，只要物品本身符合回收要求，即可回收
 - 商標如果是高價精品類別，才標記為精品
 - 如果物品沒有在可接受的物品類別列表中請拒絕回收
 - 若物品狀況良好，優先考慮二手轉售價值
+- 若物品外觀有明顯損壞、瑕疵、汙垢，請拒絕回收
 
 請在分析最後加上一行回收建議，格式為：
 「回收建議：[可回收/不可回收]。理由：[簡短說明物品材質是否符合回收類別]」
@@ -43,7 +47,7 @@ ${recyclableCategories.join('、')}
 請用繁體中文回答，並盡可能詳細描述所見到的特徵。
 如果圖片不夠清晰，請說明可以觀察到的部分，並標註無法確定的資訊`
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     const statusDiv = document.getElementById('status');
     const cameraVideo = document.getElementById('camera');
     const previewImg = document.getElementById('preview');
@@ -273,6 +277,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    if(!updtaecameralist) {
+    	await getCameraDevices();
+    	updtaecameralist = 'complete_update_camera_list';
+    }
+
     // 修改開啟相機的函數
     startCameraBtn.addEventListener('click', async function() {
         try {
@@ -313,6 +322,9 @@ document.addEventListener('DOMContentLoaded', function() {
             previewImg.style.display = 'none';
             capturePhotoBtn.disabled = false;
             stopCameraBtn.disabled = false;
+            analyzePhotoBtn.disabled = true;
+        	capturePhotoBtn.textContent = '拍攝照片';
+
             //startCameraBtn.textContent = '關閉相機';
             updateStatus('相機已開啟', 'active');
         } catch (error) {

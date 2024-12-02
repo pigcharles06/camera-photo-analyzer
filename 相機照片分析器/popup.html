@@ -9,10 +9,10 @@
       width: 600px;
       padding: 15px;
       font-family: "Microsoft JhengHei", sans-serif;
-      /*background-image: url("back.png");
+      background-image: url("back.png");
       background-color: transparent;
       background-repeat: no-repeat;
-      background-position-x: right;*/      
+      background-position-x: right;      
     }
     
     .container {
@@ -20,6 +20,13 @@
       flex-direction: column;
       gap: 15px;
     }
+    
+    #h2_text {
+      font-size: 24px;
+    }
+    #h3_text {
+      font-size: 24px;
+    }    
 
     .status {
       margin: 10px 0;
@@ -46,6 +53,7 @@
       color: white;
       border: none;
       border-radius: 4px;
+      box-shadow: rgba(0, 0, 0, .3) 0 5px 15px;
       cursor: pointer;
       font-size: 18px;
     }
@@ -57,6 +65,12 @@
 
     button:hover:not(:disabled) {
       background-color: #1565c0;
+    }
+
+    #analyzePhoto:not(:disabled) {
+      background-color: #ffd000;
+      color: black;
+      font-weight: bold;
     }
 
     #preview, #camera {
@@ -212,7 +226,7 @@
 </head>
 <body>
   <div class="container">
-    <h2>相機照片分析器</h2>
+    <h2 id=h2_text>相機照片分析器</h2>
     <div id="status" class="status">準備就緒</div>
     
     <video id="camera" autoplay playsinline></video>
@@ -245,7 +259,7 @@
     </div>
 
     <div id="fileList">
-      <h3>最近分析的照片</h3>
+      <h3 id=h3_text>最近分析的照片</h3>
       <div class="history-controls">
         <button id="exportHistory">匯出歷史紀錄</button>
         <button id="clearHistory">清除歷史紀錄</button>
